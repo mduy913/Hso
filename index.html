@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LUCKYWIN - THE ULTIMATE CASINO</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&family=Orbitron:wght@900&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #ffdf00; --gold-d: #b8860b; --bg: #0a0a0b; --card: #161618; --red: #ff3e3e; --blue: #00c2ff; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: #fff; margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+
+        /* Giao diện Header & Balance */
+        .app-bar { height: 60px; background: #000; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; border-bottom: 2px solid #222; }
+        .balance-chip { background: #1a1a1a; border: 1px solid var(--gold); border-radius: 20px; padding: 5px 12px; color: var(--gold); font-family: 'Orbitron'; font-size: 14px; }
+
+        /* Navigation Pages */
+        .view { display: none; height: calc(100vh - 135px); overflow-y: auto; padding: 15px; }
+        .view.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- GAME 1: TÀI XỈU --- */
+        .tx-container { background: var(--card); border-radius: 25px; padding: 20px; text-align: center; border: 1px solid #333; }
+        .dice-area { font-size: 60px; margin: 20px 0; letter-spacing: 10px; min-height: 80px; }
+        .timer-circle { width: 80px; height: 80px; border: 4px solid var(--gold); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 30px; font-family: 'Orbitron'; color: var(--gold); }
+
+        /* --- GAME 2: SLOT MACHINE --- */
+        .slot-machine { background: #000; border: 4px solid #444; border-radius: 15px; display: flex; justify-content: space-around; padding: 20px; margin: 20px 0; }
+        .slot-col { font-size: 50px; background: #111; width: 80px; height: 100px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #333; }
+
+        /* --- GAME 3: ROULETTE --- */
+        .roulette-wheel { width: 200px; height: 200px; border: 10px solid #333; border-radius: 50%; margin: 20px auto; position: relative; transition: transform 4s cubic-bezier(0.1, 0, 0.1, 1); background: conic-gradient(#ff3e3e 0deg 18deg, #000 18deg 36deg, #ff3e3e 36deg 54deg, #000 54deg 72deg, #ff3e3e 72deg 90deg, #000 90deg 108deg, #ff3e3e 108deg 126deg, #000 126deg 144deg, #ff3e3e 144deg 162deg, #000 162deg 180deg, #ff3e3e 180deg 198deg, #000 198deg 216deg, #ff3e3e 216deg 234deg, #000 234deg 252deg, #ff3e3e 252deg 270deg, #000 270deg 288deg, #ff3e3e 288deg 306deg, #000 306deg 324deg, #ff3e3e 324deg 342deg, #000 342deg 360deg); }
+        .pointer { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid var(--gold); position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 10; }
+
+        /* Bet Controls */
+        .bet-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .btn-game { padding: 20px; border: none; border-radius: 15px; font-weight: 900; font-size: 20px; color: #fff; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,0.5); }
+        .btn-red { background: linear-gradient(180deg, #ff416c, #ff4b2b); }
+        .btn-blue { background: linear-gradient(180deg, #00c6ff, #0072ff); }
+        .btn-gold { background: linear-gradient(180deg, var(--gold), var(--gold-d)); color: #000; }
+
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; border-top: 1px solid #222; display: flex; justify-content: space-around; align-items: center; }
+        .nav-item { color: #555; text-align: center; font-size: 11px; font-weight: bold; }
+        .nav-item.active { color: var(--gold); }
+    </style>
+</head>
+<body>
+
+    <div class="app-bar">
+        <b style="color:var(--gold); font-family:'Orbitron';" onclick="adm()">LUCKYWIN</b>
+        <div class="balance-chip">💰 <span id="user-bal">0</span></div>
+    </div>
+
+    <div id="v-tx" class="view active">
+        <div class="tx-container">
+            <div class="timer-circle" id="tx-timer">30</div>
+            <div class="dice-area" id="tx-dice">🎲🎲🎲</div>
+            <div style="font-size:12px; color:#666; margin-bottom:10px;">PHIÊN: #<span id="tx-session">...</span></div>
+        </div>
+        <div class="bet-buttons">
+            <button class="btn-game btn-red" onclick="placeBet('tai')">TÀI</button>
+            <button class="btn-game btn-blue" onclick="placeBet('xiu')">XỈU</button>
+        </div>
+    </div>
+
+    <div id="v-slot" class="view">
+        <div class="tx-container">
+            <h2 style="margin:0; color:var(--gold);">BIG WIN SLOT</h2>
+            <div class="slot-machine">
+                <div class="slot-col" id="s1">🍒</div>
+                <div class="slot-col" id="s2">🍒</div>
+                <div class="slot-col" id="s3">🍒</div>
+            </div>
+            <button class="btn-game btn-gold" style="width:100%" onclick="spinSlot()">QUAY NGAY (10k)</button>
+        </div>
+    </div>
+
+    <div id="v-roulette" class="view">
+        <div class="tx-container" style="overflow:hidden;">
+            <div class="pointer"></div>
+            <div class="roulette-wheel" id="wheel"></div>
+            <div id="roulette-res" style="margin-top:10px; font-weight:bold; color:var(--gold);">CHỜ QUAY...</div>
+        </div>
+        <div class="bet-buttons">
+            <button class="btn-game btn-red" onclick="spinRoulette('red')">ĐỎ</button>
+            <button class="btn-game btn-blue" onclick="spinRoulette('black')">ĐEN</button>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="go('v-tx', 0)">TÀI XỈU</div>
+        <div class="nav-item" onclick="go('v-slot', 1)">SLOT</div>
+        <div class="nav-item" onclick="go('v-roulette', 2)">ROULETTE</div>
+        <div class="nav-item" onclick="alert('Rút tiền tối thiểu 100k!')">RÚT TIỀN</div>
+    </div>
+
+<script>
+    // 1. CONFIG FIREBASE
+    const firebaseConfig = { databaseURL: "https://shopmduy-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let curU = "user_test"; // Tạm thời để user cố định
+    let balance = 0, txTime = 30;
+    const icons = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣'];
+
+    function go(id, idx) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-item')[idx].classList.add('active');
+    }
+
+    // 2. VÍ & DỮ LIỆU
+    db.ref('users/'+curU).on('value', s => {
+        balance = s.val()?.balance || 0;
+        document.getElementById('user-bal').innerText = balance.toLocaleString();
+    });
+
+    // 3. LOGIC TÀI XỈU (Có House Edge)
+    setInterval(() => {
+        txTime--;
+        if(txTime < 0) txTime = 35;
+        let display = txTime > 30 ? "MỞ" : (txTime < 10 ? "0"+txTime : txTime);
+        document.getElementById('tx-timer').innerText = display;
+        
+        if(txTime === 0) {
+            // House Edge: 49/51 (Nhà cái có lợi 2%)
+            let res = Math.random() < 0.49 ? 'tai' : 'xiu'; 
+            document.getElementById('tx-dice').innerText = res === 'tai' ? '⚅⚄⚃' : '⚀⚁⚂';
+            document.getElementById('tx-session').innerText = Math.floor(Date.now()/10000);
+        }
+        if(txTime === 35) document.getElementById('tx-dice').innerText = "🎲🎲🎲";
+    }, 1000);
+
+    function placeBet(side) {
+        if(txTime < 5 || txTime > 30) return alert("Hết giờ cược!");
+        if(balance < 10000) return alert("Ví không đủ!");
+        db.ref('users/'+curU+'/balance').transaction(v => v - 10000);
+        alert("Cược " + side.toUpperCase() + " thành công!");
+    }
+
+    // 4. LOGIC SLOT (Lợi thế hệ thống cực cao)
+    function spinSlot() {
+        if(balance < 10000) return alert("Hết tiền cược!");
+        db.ref('users/'+curU+'/balance').transaction(v => v - 10000);
+        
+        let s1 = icons[Math.floor(Math.random()*icons.length)];
+        let s2 = icons[Math.floor(Math.random()*icons.length)];
+        let s3 = icons[Math.floor(Math.random()*icons.length)];
+
+        document.getElementById('s1').innerText = s1;
+        document.getElementById('s2').innerText = s2;
+        document.getElementById('s3').innerText = s3;
+
+        if(s1 === s2 && s2 === s3) {
+            alert("JACKPOT! Thắng 500k");
+            db.ref('users/'+curU+'/balance').transaction(v => v + 500000);
+        }
+    }
+
+    // 5. LOGIC ROULETTE
+    function spinRoulette(side) {
+        if(balance < 20000) return alert("Tối thiểu 20k!");
+        db.ref('users/'+curU+'/balance').transaction(v => v - 20000);
+
+        let deg = 1440 + Math.floor(Math.random()*360);
+        document.getElementById('wheel').style.transform = `rotate(${deg}deg)`;
+        
+        setTimeout(() => {
+            let finalDeg = deg % 360;
+            let res = (finalDeg % 36 > 18) ? 'red' : 'black';
+            document.getElementById('roulette-res').innerText = "KẾT QUẢ: " + (res==='red'?'ĐỎ':'ĐEN');
+            if(res === side) {
+                alert("Thắng!");
+                db.ref('users/'+curU+'/balance').transaction(v => v + 40000);
+            }
+        }, 4000);
+    }
+
+    // 6. CỬA HẬU ADMIN (Dành cho sếp)
+    function adm() {
+        let p = prompt("MẬT MÃ ADMIN:");
+        if(p === "1234") {
+            let u = prompt("ID Khách:");
+            let m = parseInt(prompt("Số tiền cộng:"));
+            db.ref('users/'+u+'/balance').transaction(v => (v||0) + m);
+        }
+    }
+</script>
+</body>
+</html>
